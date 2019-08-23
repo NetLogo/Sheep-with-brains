@@ -62,7 +62,7 @@ to setup
     [-> rt 30]
   )
 
-  set layers (sentence (length inputs) (length outputs))
+  set layers (sentence (length inputs) hidden-layer-neurons (length outputs))
 
   ask patches [ set pcolor green ]
   ask patches [
@@ -154,7 +154,7 @@ to-report make-brain
   ls:set-name brain (word "Brain of " self)
   (ls:ask b [ ls ->
     set color-links? false
-    setup ls ["softmax"]
+    setup ls ["relu" "softmax"]
     randomize-weights
   ] layers)
   report b
@@ -163,9 +163,6 @@ end
 
 to setup-brain
   set brain make-brain
-  if include-null? [
-    set null-brain make-brain
-  ]
 end
 
 to-report in-vision-at [ agentset angle ]
@@ -225,16 +222,6 @@ to reproduce
     rt random-float 360 fd 1
     set child self
   ]
-  if include-null? [
-    ls:let null-weights map [ w -> random-normal w mut-rate ] [get-weights] ls:of null-brain
-    ls:let null-biases map [ b -> random-normal b mut-rate ] [get-biases] ls:of null-brain
-    ask child [
-      ls:ask null-brain [
-        set-weights null-weights
-        set-biases null-biases
-      ]
-    ]
-  ]
   ask child [
     add-stats
   ]
@@ -260,9 +247,6 @@ to kill
   delete-stats
   ls:set-name brain "In pool"
   set brain-pool fput brain brain-pool
-  if include-null? [
-    set brain-pool fput null-brain brain-pool
-  ]
   die
 end
 
@@ -321,18 +305,7 @@ to change-stats [ scale ]
     set wolves-towards-sheep wolves-towards-sheep + scale * towards-type 3 brain
     set wolves-towards-wolves wolves-towards-wolves + scale * towards-type 6 brain
   ]
-  if include-null? [
-    if is-a-sheep? self [
-      set null-sheep-towards-grass null-sheep-towards-grass + scale * towards-type 0 null-brain
-      set null-sheep-towards-sheep null-sheep-towards-sheep + scale * towards-type 3 null-brain
-      set null-sheep-towards-wolves null-sheep-towards-wolves + scale * towards-type 6 null-brain
-    ]
-    if is-wolf? self [
-      set null-wolves-towards-grass null-wolves-towards-grass + scale * towards-type 0 null-brain
-      set null-wolves-towards-sheep null-wolves-towards-sheep + scale * towards-type 3 null-brain
-      set null-wolves-towards-wolves null-wolves-towards-wolves + scale * towards-type 6 null-brain
-    ]
-  ]
+
 end
 
 to-report safe-div [ n d ]
@@ -433,14 +406,14 @@ ticks
 
 SLIDER
 0
-10
+55
 175
-43
+88
 initial-number-sheep
 initial-number-sheep
 0
 250
-180.0
+45.0
 1
 1
 NIL
@@ -448,9 +421,9 @@ HORIZONTAL
 
 SLIDER
 0
-80
+125
 175
-113
+158
 sheep-gain-from-food
 sheep-gain-from-food
 0.0
@@ -463,14 +436,14 @@ HORIZONTAL
 
 SLIDER
 175
-10
+55
 350
-43
+88
 initial-number-wolves
 initial-number-wolves
 0
 250
-100.0
+33.0
 1
 1
 NIL
@@ -478,9 +451,9 @@ HORIZONTAL
 
 SLIDER
 175
-80
+125
 350
-113
+158
 grass-regrowth-time
 grass-regrowth-time
 0
@@ -492,10 +465,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-190
-45
-259
-78
+5
+90
+175
+123
 setup
 setup
 NIL
@@ -509,10 +482,10 @@ NIL
 1
 
 BUTTON
-272
-45
-339
-78
+175
+90
+350
+123
 go
 go
 T
@@ -527,9 +500,9 @@ NIL
 
 PLOT
 0
-220
+265
 350
-415
+440
 populations
 time
 pop.
@@ -547,9 +520,9 @@ PENS
 
 SLIDER
 0
-185
+230
 175
-218
+263
 vision
 vision
 0
@@ -562,9 +535,9 @@ HORIZONTAL
 
 SLIDER
 175
-185
+230
 350
-218
+263
 fov
 fov
 0
@@ -576,10 +549,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-355
-390
-430
-423
+470
+405
+545
+438
 inspect
 inspect-brain
 NIL
@@ -593,10 +566,10 @@ NIL
 1
 
 BUTTON
-430
-390
-560
-423
+545
+405
+675
+438
 reset-perspective
 ask turtles [ stop-inspecting self ]\nreset-perspective\nstop-inspecting-dead-agents\nls:hide ls:models\nls:ask ls:models [ set color-links? false ]\nask sheep [ set shape \"sheep\" ]\nask wolves [ set shape \"wolf\" ]
 NIL
@@ -611,9 +584,9 @@ NIL
 
 PLOT
 355
-10
+20
 705
-205
+215
 sheep-reactions
 NIL
 NIL
@@ -631,9 +604,9 @@ PENS
 
 PLOT
 355
-205
+215
 705
-390
+400
 wolf-reactions
 NIL
 NIL
@@ -651,9 +624,9 @@ PENS
 
 MONITOR
 285
-305
-342
 350
+342
+395
 sheep
 count sheep
 17
@@ -662,42 +635,20 @@ count sheep
 
 MONITOR
 285
-350
-342
 395
+342
+440
 wolves
 count wolves
 17
 1
 11
 
-SWITCH
-0
-45
-175
-78
-include-null?
-include-null?
-1
-1
--1000
-
-INPUTBOX
-625
-390
-705
-450
-mut-rate
-0.1
-1
-0
-Number
-
 BUTTON
-355
-425
-480
-458
+470
+440
+595
+473
 update-subject
 ask turtle-set subject [ __ignore sense ]
 T
@@ -711,10 +662,10 @@ NIL
 1
 
 BUTTON
-480
-425
-545
-458
+595
+440
+660
+473
 drag
 if mouse-down? and mouse-inside? [\n  ask min-one-of turtles [ distancexy mouse-xcor mouse-ycor ] [\n    setxy mouse-xcor mouse-ycor\n  ]\n]\ndisplay
 T
@@ -729,9 +680,9 @@ NIL
 
 PLOT
 0
-415
+440
 350
-610
+580
 smoothed efficiency
 NIL
 NIL
@@ -748,9 +699,9 @@ PENS
 
 SWITCH
 0
-150
+195
 175
-183
+228
 sheep-random?
 sheep-random?
 0
@@ -759,9 +710,9 @@ sheep-random?
 
 SWITCH
 175
-150
+195
 350
-183
+228
 wolves-random?
 wolves-random?
 0
@@ -769,10 +720,10 @@ wolves-random?
 -1000
 
 MONITOR
-290
-500
-347
-545
+295
+490
+352
+535
 sheep
 smoothed-sheep-efficiency
 3
@@ -780,10 +731,10 @@ smoothed-sheep-efficiency
 11
 
 MONITOR
-290
-545
-347
-590
+295
+535
+352
+580
 wolves
 smoothed-wolf-efficiency
 3
@@ -792,9 +743,9 @@ smoothed-wolf-efficiency
 
 SLIDER
 0
-115
+160
 175
-148
+193
 sheep-threshold
 sheep-threshold
 0
@@ -807,9 +758,9 @@ HORIZONTAL
 
 SLIDER
 175
-115
+160
 350
-148
+193
 wolf-threshold
 wolf-threshold
 0
@@ -820,106 +771,96 @@ wolf-threshold
 NIL
 HORIZONTAL
 
+SLIDER
+0
+20
+175
+53
+hidden-layer-neurons
+hidden-layer-neurons
+1
+15
+6.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+175
+20
+350
+53
+mut-rate
+mut-rate
+0
+0.5
+0.15
+0.01
+1
+NIL
+HORIZONTAL
+
 @#$#@#$#@
 ## WHAT IS IT?
+This model uses LevelSpace to embed an artificial neural network inside every animal. The ANN receives input from the animal's surroundings about the location of grass, wolves, and sheep, and attempts to predict which would be the best actions (turn left, right, or walk straight) for this animal.
 
-This model explores the stability of predator-prey ecosystems. Such a system is called unstable if it tends to result in extinction for one or more species involved.  In contrast, a system is stable if it tends to maintain itself over time, despite fluctuations in population sizes.
+When animals reproduce, they pass on a slightly mutated version of their ANN to their offspring. In this way, the model functions as a genetic algorithm for training the fitness of the ANNs.
 
-## HOW IT WORKS
+The model adds two parameters that one can change: hidden-layer-neurons, which determines how many neurons one wants in the hidden layer in the ANN, and mut-rate, which determines how quickly neural nets can mutate.
 
-There are two main variations to this model.
-
-In the first variation, wolves and sheep wander randomly around the landscape, while the wolves look for sheep to prey on. Each step costs the wolves energy, and they must eat sheep in order to replenish their energy - when they run out of energy they die. To allow the population to continue, each wolf or sheep has a fixed probability of reproducing at each time step. This variation produces interesting population dynamics, but is ultimately unstable.
-
-The second variation includes grass (green) in addition to wolves and sheep. The behavior of the wolves is identical to the first variation, however this time the sheep must eat grass in order to maintain their energy - when they run out of energy they die. Once grass is eaten it will only regrow after a fixed amount of time. This variation is more complex than the first, but it is generally stable.
-
-The construction of this model is described in two papers by Wilensky & Reisman referenced below.
+The model also adds a number of plots. The most important being Wolf-Reactions and Sheep-Reactions. These show the average probability that a wolf or a sheep will turn toward respectively grass, sheep, and wolves.
 
 ## HOW TO USE IT
 
-1. Set the GRASS? switch to TRUE to include grass in the model, or to FALSE to only include wolves (red) and sheep (white).
-2. Adjust the slider parameters (see below), or use the default settings.
-3. Press the SETUP button.
-4. Press the GO button to begin the simulation.
-5. Look at the monitors to see the current population sizes
-6. Look at the POPULATIONS plot to watch the populations fluctuate over time
+1. Set the number of desired neurons in the hidden layer.
+2. Set the mutation rate that you want to explore in the model.
+3. Adjust the slider parameters (see below), or use the default settings.
+4. Press the SETUP button.
+5. Press the GO button to begin the simulation.
+6. Look at the monitors to see the current population sizes
+7. Look at the POPULATIONS plot to watch the populations fluctuate over time
 
 Parameters:
+HIDDEN-LAYER-NEURONS: The number of neurons in the hidden layer
+MUT-RATE: The standard deviation of the mutation to the ANN of offspring, compared to its parent.
 INITIAL-NUMBER-SHEEP: The initial size of sheep population
 INITIAL-NUMBER-WOLVES: The initial size of wolf population
 SHEEP-GAIN-FROM-FOOD: The amount of energy sheep get for every grass patch eaten
 WOLF-GAIN-FROM-FOOD: The amount of energy wolves get for every sheep eaten
 SHEEP-REPRODUCE: The probability of a sheep reproducing at each time step
 WOLF-REPRODUCE: The probability of a wolf reproducing at each time step
-GRASS?: Whether or not to include grass in the model
 GRASS-REGROWTH-TIME: How long it takes for grass to regrow once it is eaten
 SHOW-ENERGY?: Whether or not to show the energy of each animal as a number
 
-Notes:
-- one unit of energy is deducted for every step a wolf takes
-- when grass is included, one unit of energy is deducted for every step a sheep takes
-
 ## THINGS TO NOTICE
 
-When grass is not included, watch as the sheep and wolf populations fluctuate. Notice that increases and decreases in the sizes of each population are related. In what way are they related? What eventually happens?
-
-Once grass is added, notice the green line added to the population plot representing fluctuations in the amount of grass. How do the sizes of the three populations appear to relate now? What is the explanation for this?
-
-Why do you suppose that some variations of the model might be stable while others are not?
+Sheep and wolves learn to behave in a way that is consistent with their survival.
 
 ## THINGS TO TRY
 
-Try adjusting the parameters under various settings. How sensitive is the stability of the model to the particular parameters?
+With how many neurons in the hidden layer to animals learn the fastest? Is there an optimal number?
 
-Can you find any parameters that generate a stable ecosystem that includes only wolves and sheep?
+With which mutation rate do animals learn the fastest? Can they learn "too fast"? Can we destabilize learning by making the mutation rate too high?
 
-Try setting GRASS? to TRUE, but setting INITIAL-NUMBER-WOLVES to 0. This gives a stable ecosystem with only sheep and grass. Why might this be stable while the variation with only sheep and wolves is not?
-
-Notice that under stable settings, the populations tend to fluctuate at a predictable pace. Can you find any parameters that will speed this up or slow it down?
-
-Try changing the reproduction rules -- for example, what would happen if reproduction depended on energy rather than being determined by a fixed probability?
-
-## EXTENDING THE MODEL
-
-There are a number ways to alter the model so that it will be stable with only wolves and sheep (no grass). Some will require new elements to be coded in or existing behaviors to be changed. Can you develop such a version?
-
-## NETLOGO FEATURES
-
-Note the use of breeds to model two different kinds of "turtles": wolves and sheep. Note the use of patches to model grass.
-
-Note use of the ONE-OF agentset reporter to select a random sheep to be eaten by a wolf.
-
-## RELATED MODELS
-
-Look at Rabbits Grass Weeds for another model of interacting populations with different rules.
 
 ## CREDITS AND REFERENCES
 
-Wilensky, U. & Reisman, K. (1999). Connected Science: Learning Biology through Constructing and Testing Computational Theories -- an Embodied Modeling Approach. International Journal of Complex Systems, M. 234, pp. 1 - 12. (This model is a slightly extended version of the model described in the paper.)
-
-Wilensky, U. & Reisman, K. (2006). Thinking like a Wolf, a Sheep or a Firefly: Learning Biology through Constructing and Testing Computational Theories -- an Embodied Modeling Approach. Cognition & Instruction, 24(2), pp. 171-209. http://ccl.northwestern.edu/papers/wolfsheep.pdf
+This is a slightly modified version of Sheep With Brains from B. Head, A. Hjorth, C. Brady, and U. Wilensky. Evolving agent cognition with netlogo levelspace. In Proc.
+of the Winter Simulation Conf., 2016.
 
 
 ## HOW TO CITE
 
 If you mention this model in a publication, we ask that you include these citations for the model itself and for the NetLogo software:
 
-* Wilensky, U. (1997).  NetLogo Wolf Sheep Predation model.  http://ccl.northwestern.edu/netlogo/models/WolfSheepPredation.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
-* Wilensky, U. (1999). NetLogo. http://ccl.northwestern.edu/netlogo/. Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+B. Head, A. Hjorth, C. Brady, and U. Wilensky. (2016). Evolving agent cognition with netlogo levelspace. In Proc. of the Winter Simulation Conf., 2016.
 
 ## COPYRIGHT AND LICENSE
 
-Copyright 1997 Uri Wilensky.
-
-![CC BY-NC-SA 3.0](http://i.creativecommons.org/l/by-nc-sa/3.0/88x31.png)
-
 This work is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.  To view a copy of this license, visit http://creativecommons.org/licenses/by-nc-sa/3.0/ or send a letter to Creative Commons, 559 Nathan Abbott Way, Stanford, California 94305, USA.
 
-Commercial licenses are also available. To inquire about commercial licenses, please contact Uri Wilensky at uri@northwestern.edu.
-
-This model was created as part of the project: CONNECTED MATHEMATICS: MAKING SENSE OF COMPLEX PHENOMENA THROUGH BUILDING OBJECT-BASED PARALLEL MODELS (OBPML).  The project gratefully acknowledges the support of the National Science Foundation (Applications of Advanced Technologies Program) -- grant numbers RED #9552950 and REC #9632612.
-
-This model was converted to NetLogo as part of the projects: PARTICIPATORY SIMULATIONS: NETWORK-BASED DESIGN FOR SYSTEMS LEARNING IN CLASSROOMS and/or INTEGRATED SIMULATION AND MODELING ENVIRONMENT. The project gratefully acknowledges the support of the National Science Foundation (REPP & ROLE programs) -- grant numbers REC #9814682 and REC-0126227. Converted from StarLogoT to NetLogo, 2000.
+This work is supported in part by the National Science Foundation under NSF grant 1441552. However, any opinions, findings, conclusions, and/or recommendations are those of the investigators and do not necessarily reflect the views of the Foundation.
 @#$#@#$#@
 default
 true
